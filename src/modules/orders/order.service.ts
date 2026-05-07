@@ -5,6 +5,10 @@ import {
   UpdateOrderStatusInput,
   OrderQueryInput,
 } from "./order.validation";
+import {
+  sendNotification,
+  sendProviderNotification,
+} from "../../config/socket";
 
 export class OrderService {
   // create order (customer)
@@ -68,6 +72,21 @@ export class OrderService {
     const cart = await prisma.cart.findUnique({ where: { customerId } });
     if (cart) {
       await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
+    }
+
+    // provider কে নতুন order এর notification দাও
+    const providerProfile = await prisma.providerProfile.findUnique({
+      where: { id: data.providerId },
+      select: { id: true, userId: true },
+    });
+
+    if (providerProfile) {
+      sendProviderNotification(providerProfile.id, {
+        type: "NEW_ORDER",
+        title: "New Order Received",
+        message: `You have received a new order of ${orderItems.length} item(s)`,
+        data: { orderId: order.id },
+      });
     }
 
     return order;
@@ -215,6 +234,21 @@ export class OrderService {
           },
         },
       },
+    });
+
+    // customer কে status update notification দাও
+    const statusMessages: Record<string, string> = {
+      PREPARING: "Your order is being prepared",
+      READY: "Your order is ready for delivery",
+      DELIVERED: "Your order has been delivered",
+      CANCELLED: "Your order has been cancelled",
+    };
+
+    sendNotification(updated.customerId, {
+      type: "ORDER_STATUS_UPDATE",
+      title: "Order Update",
+      message: statusMessages[data.status] || "Your order status has been updated",
+      data: { orderId: id, status: data.status },
     });
 
     return updated;
