@@ -5,18 +5,20 @@
     "moduleResolution": "node",
     "ignoreDeprecations": "6.0",
     "outDir": "./dist",
-    "rootDir": ".",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"],
+    "baseUrl": "."
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "prisma/**/*",
+    "generated/**/*"
   ],
   "exclude": [
     "node_modules",
-    "dist",
-    "generated/prisma"
+    "dist"
   ]
 }

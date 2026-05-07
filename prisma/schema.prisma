@@ -7,3 +7,199 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─── User & Auth Models ───────────────────────────────
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  role          Role     @default(CUSTOMER)
+  phone         String?
+  address       String?
+  city          String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions        Session[]
+  accounts        Account[]
+  providerProfile ProviderProfile?
+  orders          Order[]
+  reviews         Review[]
+  cart            Cart?
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// ─── Provider Models ──────────────────────────────────
+model ProviderProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  shopName    String
+  description String?
+  logo        String?
+  coverImage  String?
+  address     String
+  city        String
+  phone       String?
+  isVerified  Boolean  @default(false)
+  isOpen      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meals Meal[]
+}
+
+// ─── Category Models ──────────────────────────────────
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  image     String
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  meals Meal[]
+}
+
+// ─── Meal Models ──────────────────────────────────────
+model Meal {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  price       Float
+  images      String[]
+  tags        String[]
+  prepTime    Int      @default(30)
+  isAvailable Boolean  @default(true)
+  categoryId  String
+  providerId  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category   Category        @relation(fields: [categoryId], references: [id])
+  provider   ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+  cartItems  CartItem[]
+  reviews    Review[]
+}
+
+// ─── Order Models ─────────────────────────────────────
+model Order {
+  id              String      @id @default(cuid())
+  customerId      String
+  providerId      String
+  status          OrderStatus @default(PLACED)
+  totalAmount     Float
+  deliveryAddress String
+  deliveryCity    String
+  note            String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  customer User        @relation(fields: [customerId], references: [id])
+  items    OrderItem[]
+}
+
+model OrderItem {
+  id       String @id @default(cuid())
+  orderId  String
+  mealId   String
+  quantity Int
+  price    Float
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  meal  Meal  @relation(fields: [mealId], references: [id])
+}
+
+// ─── Cart Models ──────────────────────────────────────
+model Cart {
+  id         String   @id @default(cuid())
+  customerId String   @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer User       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  items    CartItem[]
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  mealId    String
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+
+  cart Cart @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  meal Meal @relation(fields: [mealId], references: [id])
+}
+
+// ─── Review Models ────────────────────────────────────
+model Review {
+  id         String   @id @default(cuid())
+  customerId String
+  mealId     String
+  rating     Int      @default(1)
+  comment    String
+  sentiment  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer User @relation(fields: [customerId], references: [id])
+  meal     Meal @relation(fields: [mealId], references: [id], onDelete: Cascade)
+}
+
+// ─── Enums ────────────────────────────────────────────
+enum Role {
+  CUSTOMER
+  PROVIDER
+  ADMIN
+}
+
+enum OrderStatus {
+  PLACED
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
