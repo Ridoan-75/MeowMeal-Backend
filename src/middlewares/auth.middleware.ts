@@ -3,7 +3,6 @@ import { auth } from "../config/auth";
 import { AppError } from "../errors/AppErrors";
 import { prisma } from "../config/database";
 
-// extend express Request type
 declare global {
   namespace Express {
     interface Request {
@@ -24,46 +23,49 @@ export const authenticate = async (
   next: NextFunction
 ) => {
   try {
-    // Bearer token থেকে নেওয়ার চেষ্টা করো
     const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      const token = authHeader.split(" ")[1];
-      req.headers["cookie"] = `better-auth.session_token=${token}`;
-    }
 
-    const session = await auth.api.getSession({
-      headers: req.headers as any,
-    });
-
-    if (!session || !session.user) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       throw new AppError("Unauthorized. Please login first.", 401);
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        id: true,
-        role: true,
-        email: true,
-        name: true,
-        isActive: true,
+    const token = authHeader.split(" ")[1];
+
+    // session token দিয়ে directly database থেকে verify করো
+    const session = await prisma.session.findUnique({
+      where: { token },
+      include: {
+        user: {
+          select: {
+            id: true,
+            role: true,
+            email: true,
+            name: true,
+            isActive: true,
+          },
+        },
       },
     });
 
-    if (!user) {
-      throw new AppError("User not found", 404);
+    if (!session) {
+      throw new AppError("Invalid or expired session. Please login again.", 401);
     }
 
-    if (!user.isActive) {
-      throw new AppError("Your account has been suspended", 403);
+    // session expired কিনা check করো
+    if (session.expiresAt < new Date()) {
+      throw new AppError("Session expired. Please login again.", 401);
+    }
+
+    if (!session.user.isActive) {
+      throw new AppError("Your account has been suspended.", 403);
     }
 
     req.user = {
-      id: user.id,
-      role: user.role,
-      email: user.email,
-      name: user.name,
-      isActive: user.isActive,
+      id: session.user.id,
+      role: session.user.role as string,
+      email: session.user.email,
+      name: session.user.name,
+      isActive: session.user.isActive,
     };
 
     next();
@@ -80,7 +82,7 @@ export const authorize = (...roles: string[]) => {
 
     if (!roles.includes(req.user.role)) {
       return next(
-        new AppError("You do not have permission to perform this action", 403),
+        new AppError("You do not have permission to perform this action", 403)
       );
     }
 
