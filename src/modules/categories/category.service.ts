@@ -1,5 +1,6 @@
 import { prisma } from "../../config/database";
 import { AppError } from "../../errors/AppErrors";
+import { getOrSetCache, cacheKeys, cache } from "../../lib/cache";
 import {
   CreateCategoryInput,
   UpdateCategoryInput,
@@ -8,17 +9,19 @@ import {
 export class CategoryService {
   // get all categories
   async getAllCategories() {
-    const categories = await prisma.category.findMany({
-      where: { isActive: true },
-      orderBy: { name: "asc" },
-      include: {
-        _count: {
-          select: { meals: true },
+    return getOrSetCache(cacheKeys.allCategories, async () => {
+      const categories = await prisma.category.findMany({
+        where: { isActive: true },
+        orderBy: { name: "asc" },
+        include: {
+          _count: {
+            select: { meals: true },
+          },
         },
-      },
-    });
+      });
 
-    return categories;
+      return categories;
+    });
   }
 
   // get category by id
@@ -52,7 +55,7 @@ export class CategoryService {
     }
 
     const category = await prisma.category.create({ data });
-
+    cache.del(cacheKeys.allCategories);
     return category;
   }
 
