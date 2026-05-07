@@ -19,7 +19,7 @@ app.use(cors({
 }));
 
 // ─── Better Auth Handler ──────────────────────────────
-app.all("/api/auth/*", toNodeHandler(auth));
+app.all("/api/auth/*splat", toNodeHandler(auth));
 
 // ─── Body Parser ──────────────────────────────────────
 app.use(express.json({ limit: "10mb" }));

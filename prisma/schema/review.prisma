@@ -1,0 +1,13 @@
+model Review {
+  id         String   @id @default(cuid())
+  customerId String
+  mealId     String
+  rating     Int      @default(1)
+  comment    String
+  sentiment  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer   User     @relation(fields: [customerId], references: [id])
+  meal       Meal     @relation(fields: [mealId], references: [id], onDelete: Cascade)
+}

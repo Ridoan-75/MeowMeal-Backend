@@ -1,0 +1,20 @@
+model Cart {
+  id         String     @id @default(cuid())
+  customerId String     @unique
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  customer   User       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  items      CartItem[]
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  mealId    String
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  meal      Meal     @relation(fields: [mealId], references: [id])
+}
