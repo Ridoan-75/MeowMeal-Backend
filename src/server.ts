@@ -1,14 +1,23 @@
-import app from './app';
-import config from './config';
+import "dotenv/config";
+import app from "./app";
+import { prisma } from "./config/database";
+import { logger } from "./utils/logger";
 
-async function main() {
+const PORT = process.env.PORT || 5000;
+
+async function startServer() {
   try {
-    app.listen(config.port, () => {
-      console.log(`Example app listening on port ${config.port}`);
+    await prisma.$connect();
+    logger.info("✅ Database connected successfully");
+
+    app.listen(PORT, () => {
+      logger.info(`🚀 MeowMeal server running on port ${PORT}`);
+      logger.info(`🌍 Environment: ${process.env.NODE_ENV}`);
     });
-  } catch (err) {
-    console.log(err);
+  } catch (error) {
+    logger.error("❌ Failed to start server:", error);
+    process.exit(1);
   }
 }
 
-main();
+startServer();
