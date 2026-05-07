@@ -11,12 +11,23 @@ import routes from "./routes";
 
 const app: Application = express();
 
+app.use(
+  cors({
+    origin: ["http://localhost:3000", "http://localhost:5000"],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization", "Origin"],
+  }),
+);
+
 // ─── Security Middlewares ─────────────────────────────
 app.use(helmet());
-app.use(cors({
-  origin: process.env.CLIENT_URL || "http://localhost:3000",
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    credentials: true,
+  }),
+);
 
 // ─── Better Auth Handler ──────────────────────────────
 app.all("/api/auth/*splat", toNodeHandler(auth));
@@ -26,11 +37,13 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // ─── Logging ──────────────────────────────────────────
-app.use(morgan("combined", {
-  stream: {
-    write: (message) => logger.info(message.trim()),
-  },
-}));
+app.use(
+  morgan("combined", {
+    stream: {
+      write: (message) => logger.info(message.trim()),
+    },
+  }),
+);
 
 // ─── Rate Limiting ────────────────────────────────────
 app.use("/api", apiLimiter);

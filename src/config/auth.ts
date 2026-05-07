@@ -7,6 +7,11 @@ export const auth = betterAuth({
     provider: "postgresql",
   }),
 
+  trustedOrigins: [
+    "http://localhost:3000",
+    "http://localhost:5000",
+  ],
+
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 6,
@@ -40,9 +45,9 @@ export const auth = betterAuth({
   },
 
   session: {
-    expiresIn: 60 * 60 * 24 * 7, 
-    updateAge: 60 * 60 * 24,      
-  }
+    expiresIn: 60 * 60 * 24 * 7,
+    updateAge: 60 * 60 * 24,
+  },
 });
 
 export type Auth = typeof auth;

@@ -1,9 +1,8 @@
 import { Router } from "express";
+import authRoutes from "../modules/auth/auth.route";
 
 const router = Router();
 
-// modules add হবে এখানে একটা একটা করে
-// router.use("/meals", mealRoutes);
-// router.use("/orders", orderRoutes);
+router.use("/auth", authRoutes);
 
 export default router;
