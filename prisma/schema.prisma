@@ -189,6 +189,13 @@ model Review {
   meal     Meal @relation(fields: [mealId], references: [id], onDelete: Cascade)
 }
 
+// ─── Newsletter Models ─────────────────────────────
+model Newsletter {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
 // ─── Enums ────────────────────────────────────────────
 enum Role {
   CUSTOMER

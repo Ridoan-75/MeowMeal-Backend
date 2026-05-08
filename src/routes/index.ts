@@ -8,6 +8,7 @@ import cartRoutes from "../modules/cart/cart.routes";
 import providerRoutes from "../modules/providers/provider.route";
 import aiRoutes from "../modules/ai/ai.route";
 import adminRoutes from "../modules/admin/admin.route";
+import newsletterRoutes from "../modules/newsletter/newsletter.route";
 
 const router = Router();
 
@@ -20,5 +21,6 @@ router.use("/cart", cartRoutes);
 router.use("/providers", providerRoutes);
 router.use("/ai", aiRoutes);
 router.use("/admin", adminRoutes);
+router.use("/newsletter", newsletterRoutes);
 
 export default router;

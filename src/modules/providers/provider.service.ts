@@ -30,7 +30,7 @@ export class ProviderService {
       where.isOpen = query.isOpen === "true";
     }
 
-    const [providers, total] = await Promise.all([
+    const [rawProviders, total] = await Promise.all([
       prisma.providerProfile.findMany({
         where,
         skip,
@@ -40,10 +40,33 @@ export class ProviderService {
           _count: {
             select: { meals: true },
           },
+          meals: {
+            include: {
+              reviews: {
+                select: { rating: true },
+              },
+            },
+          },
         },
       }),
       prisma.providerProfile.count({ where }),
     ]);
+
+    // Calculate avg rating per provider
+    const providers = rawProviders.map((provider) => {
+      const allReviews = provider.meals.flatMap((meal) => meal.reviews);
+      const avgRating =
+        allReviews.length > 0
+          ? allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length
+          : null;
+
+      const { meals, ...rest } = provider;
+
+      return {
+        ...rest,
+        avgRating: avgRating ? Math.round(avgRating * 10) / 10 : null,
+      };
+    });
 
     return { providers, total, page, limit };
   }
@@ -203,10 +226,7 @@ export class ProviderService {
       }),
     ]);
 
-    // monthly revenue for chart
-    const monthlyRevenue = await prisma.$queryRaw<
-      { month: string; revenue: number }[]
-    >`
+    const monthlyRevenue = await prisma.$queryRaw<{ month: string; revenue: number }[]>`
       SELECT 
         TO_CHAR("createdAt", 'Mon') as month,
         SUM("totalAmount") as revenue
