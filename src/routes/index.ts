@@ -10,8 +10,12 @@ import aiRoutes from "../modules/ai/ai.route";
 import adminRoutes from "../modules/admin/admin.route";
 import newsletterRoutes from "../modules/newsletter/newsletter.route";
 import wishlistRoutes from "../modules/wishlist/wishlist.route";
+import multer from "multer";
+import { uploadFile } from "../modules/uploads/upload.controller";
+import { authenticate } from "../middlewares/auth.middleware";
 
 
+const upload = multer({ storage: multer.memoryStorage() });
 const router = Router();
 
 router.use("/auth", authRoutes);
@@ -25,5 +29,6 @@ router.use("/ai", aiRoutes);
 router.use("/admin", adminRoutes);
 router.use("/newsletter", newsletterRoutes);
 router.use("/wishlist", wishlistRoutes);
+router.post("/upload", authenticate, upload.single("file"), uploadFile);
 
 export default router;
