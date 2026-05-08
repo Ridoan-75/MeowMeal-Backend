@@ -28,6 +28,7 @@ model User {
   orders          Order[]
   reviews         Review[]
   cart            Cart?
+  wishlists       Wishlist[]
 }
 
 model Session {
@@ -122,6 +123,7 @@ model Meal {
   orderItems OrderItem[]
   cartItems  CartItem[]
   reviews    Review[]
+  wishlists  Wishlist[]
 }
 
 // ─── Order Models ─────────────────────────────────────
@@ -194,6 +196,19 @@ model Newsletter {
   id        String   @id @default(cuid())
   email     String   @unique
   createdAt DateTime @default(now())
+}
+
+// ─── Wishlist Models ─────────────────────────────
+model Wishlist {
+  id         String   @id @default(cuid())
+  customerId String
+  mealId     String
+  createdAt  DateTime @default(now())
+
+  customer User @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  meal     Meal @relation(fields: [mealId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, mealId])
 }
 
 // ─── Enums ────────────────────────────────────────────
