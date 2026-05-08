@@ -5,16 +5,7 @@ import { CreateReviewInput, ReviewQueryInput } from "./review.validation";
 export class ReviewService {
   // create review (customer)
   async createReview(customerId: string, data: CreateReviewInput) {
-    // meal exists কিনা check করো
-    const meal = await prisma.meal.findUnique({
-      where: { id: data.mealId },
-    });
-
-    if (!meal) {
-      throw new AppError("Meal not found", 404);
-    }
-
-    // customer এই meal order করেছে কিনা check করো
+    // Check if customer has ordered this meal
     const hasOrdered = await prisma.orderItem.findFirst({
       where: {
         mealId: data.mealId,
@@ -28,13 +19,16 @@ export class ReviewService {
     if (!hasOrdered) {
       throw new AppError(
         "You can only review meals you have ordered and received",
-        400
+        403,
       );
     }
 
-    // already review দিয়েছে কিনা check করো
+    // Check if already reviewed
     const existingReview = await prisma.review.findFirst({
-      where: { customerId, mealId: data.mealId },
+      where: {
+        mealId: data.mealId,
+        customerId,
+      },
     });
 
     if (existingReview) {
@@ -43,18 +37,11 @@ export class ReviewService {
 
     const review = await prisma.review.create({
       data: {
+        ...data,
         customerId,
-        mealId: data.mealId,
-        rating: data.rating,
-        comment: data.comment,
       },
       include: {
-        customer: {
-          select: { id: true, name: true, image: true },
-        },
-        meal: {
-          select: { id: true, title: true },
-        },
+        customer: { select: { id: true, name: true } },
       },
     });
 
