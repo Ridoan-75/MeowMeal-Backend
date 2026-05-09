@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from "express";
-import { auth } from "../config/auth";
 import { AppError } from "../errors/AppErrors";
 import { prisma } from "../config/database";
 
@@ -31,19 +30,13 @@ export const authenticate = async (
 
     const token = authHeader.split(" ")[1];
 
-    // session token দিয়ে directly database থেকে verify করো
+    // Session verify করো
     const session = await prisma.session.findUnique({
       where: { token },
-      include: {
-        user: {
-          select: {
-            id: true,
-            role: true,
-            email: true,
-            name: true,
-            isActive: true,
-          },
-        },
+      select: {
+        id: true,
+        expiresAt: true,
+        userId: true,
       },
     });
 
@@ -51,21 +44,36 @@ export const authenticate = async (
       throw new AppError("Invalid or expired session. Please login again.", 401);
     }
 
-    // session expired কিনা check করো
     if (session.expiresAt < new Date()) {
       throw new AppError("Session expired. Please login again.", 401);
     }
 
-    if (!session.user.isActive) {
+    // Fresh user data — always latest role from DB
+    const freshUser = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: {
+        id: true,
+        role: true,
+        email: true,
+        name: true,
+        isActive: true,
+      },
+    });
+
+    if (!freshUser) {
+      throw new AppError("User not found.", 401);
+    }
+
+    if (!freshUser.isActive) {
       throw new AppError("Your account has been suspended.", 403);
     }
 
     req.user = {
-      id: session.user.id,
-      role: session.user.role as string,
-      email: session.user.email,
-      name: session.user.name,
-      isActive: session.user.isActive,
+      id: freshUser.id,
+      role: freshUser.role as string,
+      email: freshUser.email,
+      name: freshUser.name,
+      isActive: freshUser.isActive,
     };
 
     next();

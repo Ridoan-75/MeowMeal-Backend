@@ -7,13 +7,14 @@ import {
 } from "./provider.validation";
 
 export class ProviderService {
-  // get all providers (public)
+  // get all providers (public + admin)
   async getAllProviders(query: ProviderQueryInput) {
     const page = parseInt(query.page);
     const limit = parseInt(query.limit);
     const skip = (page - 1) * limit;
 
-    const where: any = { isVerified: true };
+    // isVerified filter remove করা হয়েছে — সব provider দেখাবে
+    const where: any = {};
 
     if (query.search) {
       where.OR = [
@@ -37,6 +38,13 @@ export class ProviderService {
         take: limit,
         orderBy: { createdAt: "desc" },
         include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              isActive: true,
+            },
+          },
           _count: {
             select: { meals: true },
           },
@@ -52,7 +60,6 @@ export class ProviderService {
       prisma.providerProfile.count({ where }),
     ]);
 
-    // Calculate avg rating per provider
     const providers = rawProviders.map((provider) => {
       const allReviews = provider.meals.flatMap((meal) => meal.reviews);
       const avgRating =
@@ -191,12 +198,13 @@ export class ProviderService {
     return updated;
   }
 
-  //toggle provider ban status (admin)
+  // toggle provider ban status (admin)
   async toggleProviderBan(id: string) {
     const provider = await prisma.providerProfile.findUnique({
       where: { id },
       include: { user: true },
     });
+
     if (!provider) throw new AppError("Provider not found", 404);
 
     const updated = await prisma.user.update({
@@ -207,14 +215,15 @@ export class ProviderService {
     return { isActive: updated.isActive };
   }
 
+  // delete provider (admin)
   async deleteProvider(id: string) {
     const provider = await prisma.providerProfile.findUnique({
       where: { id },
       include: { user: true },
     });
+
     if (!provider) throw new AppError("Provider not found", 404);
 
-    // Related data আগে delete করো
     await prisma.$transaction([
       prisma.wishlist.deleteMany({
         where: { meal: { providerId: id } },
