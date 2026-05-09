@@ -10,7 +10,6 @@ import {
 export class OrderService {
   // create order (customer)
   async createOrder(customerId: string, data: CreateOrderInput) {
-    // meals validate করো এবং price নাও
     const mealIds = data.items.map((item) => item.mealId);
 
     const meals = await prisma.meal.findMany({
@@ -28,13 +27,11 @@ export class OrderService {
       );
     }
 
-    // total amount calculate করো
     let totalAmount = 0;
     const orderItems = data.items.map((item) => {
       const meal = meals.find((m) => m.id === item.mealId)!;
       const itemTotal = meal.price * item.quantity;
       totalAmount += itemTotal;
-
       return {
         mealId: item.mealId,
         quantity: item.quantity,
@@ -50,9 +47,7 @@ export class OrderService {
         deliveryCity: data.deliveryCity,
         note: data.note,
         totalAmount,
-        items: {
-          create: orderItems,
-        },
+        items: { create: orderItems },
       },
       include: {
         items: {
@@ -68,13 +63,13 @@ export class OrderService {
       },
     });
 
-    // cart clear করো
+    // Cart clear করো
     const cart = await prisma.cart.findUnique({ where: { customerId } });
     if (cart) {
       await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
     }
 
-    // provider কে নতুন order এর notification দাও
+    // Provider notification
     const providerProfile = await prisma.providerProfile.findUnique({
       where: { id: data.providerId },
       select: { userId: true },
@@ -89,13 +84,28 @@ export class OrderService {
       );
     }
 
-    // customer کو order confirmation notification دو
+    // Customer notification
     await notificationService.create(
       customerId,
       "Order Placed Successfully!",
       `Your order has been placed. The restaurant will confirm shortly.`,
       "ORDER",
     );
+
+    // Admin notification
+    const admins = await prisma.user.findMany({
+      where: { role: "ADMIN" },
+      select: { id: true },
+    });
+
+    for (const admin of admins) {
+      await notificationService.create(
+        admin.id,
+        "New Order Placed!",
+        `New order worth ৳${totalAmount} placed by ${order.customer?.name}`,
+        "ORDER",
+      );
+    }
 
     return order;
   }
@@ -139,12 +149,7 @@ export class OrderService {
         items: {
           include: {
             meal: {
-              select: {
-                id: true,
-                title: true,
-                images: true,
-                price: true,
-              },
+              select: { id: true, title: true, images: true, price: true },
             },
           },
         },
@@ -158,7 +163,6 @@ export class OrderService {
       throw new AppError("Order not found", 404);
     }
 
-    // permission check
     if (userRole === "CUSTOMER" && order.customerId !== userId) {
       throw new AppError("You do not have permission to view this order", 403);
     }
@@ -219,7 +223,6 @@ export class OrderService {
       );
     }
 
-    // status flow validate করো
     const validTransitions: Record<string, string[]> = {
       PLACED: ["PREPARING", "CANCELLED"],
       PREPARING: ["READY"],
@@ -247,10 +250,10 @@ export class OrderService {
       },
     });
 
-    // customer কে status update notification দাও
+    // Customer status notification
     const statusMessages: Record<string, { title: string; message: string }> = {
       PREPARING: {
-        title: "Order Accepted! ",
+        title: "Order Accepted!",
         message: "Your order is being prepared by the restaurant.",
       },
       READY: {
@@ -302,6 +305,21 @@ export class OrderService {
       where: { id },
       data: { status: "CANCELLED" },
     });
+
+    // Provider কে cancellation notification দাও
+    const providerProfile = await prisma.providerProfile.findUnique({
+      where: { id: order.providerId },
+      select: { userId: true },
+    });
+
+    if (providerProfile) {
+      await notificationService.create(
+        providerProfile.userId,
+        "Order Cancelled",
+        `A customer cancelled their order.`,
+        "ORDER",
+      );
+    }
 
     return updated;
   }
