@@ -17,6 +17,18 @@ export const updateProfile = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, 200, true, "Profile updated successfully", user);
 });
 
+export const updateMe = catchAsync(async (req: Request, res: Response) => {
+  const { role, ...rest } = req.body;
+
+  // role update separately
+  if (role) {
+    await authService.updateRole(req.user!.id, role);
+  }
+
+  const user = await authService.updateProfile(req.user!.id, rest);
+  sendResponse(res, 200, true, "Updated successfully", user);
+});
+
 export const getAllUsers = catchAsync(async (req: Request, res: Response) => {
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 10;

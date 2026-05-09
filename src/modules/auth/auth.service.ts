@@ -119,4 +119,12 @@ export class AuthService {
 
     return updated;
   }
+
+  // update user role
+  async updateRole(id: string, role: "CUSTOMER" | "PROVIDER") {
+    return prisma.user.update({
+      where: { id },
+      data: { role },
+    });
+  }
 }

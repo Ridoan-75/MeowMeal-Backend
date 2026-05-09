@@ -29,17 +29,6 @@ export const auth = betterAuth({
       role: {
         type: "string",
         defaultValue: "CUSTOMER",
-        input: true,
-      },
-      phone: {
-        type: "string",
-        required: false,
-        input: true,
-      },
-      isActive: {
-        type: "boolean",
-        defaultValue: true,
-        input: false,
       },
     },
   },

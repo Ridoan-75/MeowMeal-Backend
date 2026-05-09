@@ -21,6 +21,7 @@ export const updateProfileSchema = z.object({
   address: z.string().optional(),
   city: z.string().optional(),
   image: z.string().url().optional(),
+  role: z.enum(["CUSTOMER", "PROVIDER"]).optional(),
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
