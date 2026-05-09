@@ -15,7 +15,6 @@ export class MealService {
 
     const where: any = {
       isAvailable: true,
-      provider: { isVerified: true, isOpen: true },
     };
 
     if (query.search) {
