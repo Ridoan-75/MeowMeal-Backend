@@ -1,14 +1,11 @@
 import { prisma } from "../../config/database";
 import { AppError } from "../../errors/AppErrors";
+import { notificationService } from "../../utils/sendNotification";
 import {
   CreateOrderInput,
   UpdateOrderStatusInput,
   OrderQueryInput,
 } from "./order.validation";
-import {
-  sendNotification,
-  sendProviderNotification,
-} from "../../config/socket";
 
 export class OrderService {
   // create order (customer)
@@ -27,7 +24,7 @@ export class OrderService {
     if (meals.length !== data.items.length) {
       throw new AppError(
         "Some meals are unavailable or do not belong to this provider",
-        400
+        400,
       );
     }
 
@@ -65,6 +62,9 @@ export class OrderService {
             },
           },
         },
+        customer: {
+          select: { id: true, name: true },
+        },
       },
     });
 
@@ -77,17 +77,25 @@ export class OrderService {
     // provider কে নতুন order এর notification দাও
     const providerProfile = await prisma.providerProfile.findUnique({
       where: { id: data.providerId },
-      select: { id: true, userId: true },
+      select: { userId: true },
     });
 
-    if (providerProfile) {
-      sendProviderNotification(providerProfile.id, {
-        type: "NEW_ORDER",
-        title: "New Order Received",
-        message: `You have received a new order of ${orderItems.length} item(s)`,
-        data: { orderId: order.id },
-      });
+    if (providerProfile && order.customer) {
+      await notificationService.create(
+        providerProfile.userId,
+        "New Order Received!",
+        `${order.customer.name} placed an order worth ৳${totalAmount}`,
+        "ORDER",
+      );
     }
+
+    // customer کو order confirmation notification دو
+    await notificationService.create(
+      customerId,
+      "Order Placed Successfully!",
+      `Your order has been placed. The restaurant will confirm shortly.`,
+      "ORDER",
+    );
 
     return order;
   }
@@ -196,7 +204,7 @@ export class OrderService {
   async updateOrderStatus(
     id: string,
     providerId: string,
-    data: UpdateOrderStatusInput
+    data: UpdateOrderStatusInput,
   ) {
     const order = await prisma.order.findUnique({ where: { id } });
 
@@ -205,7 +213,10 @@ export class OrderService {
     }
 
     if (order.providerId !== providerId) {
-      throw new AppError("You do not have permission to update this order", 403);
+      throw new AppError(
+        "You do not have permission to update this order",
+        403,
+      );
     }
 
     // status flow validate করো
@@ -220,7 +231,7 @@ export class OrderService {
     if (!validTransitions[order.status].includes(data.status)) {
       throw new AppError(
         `Cannot change status from ${order.status} to ${data.status}`,
-        400
+        400,
       );
     }
 
@@ -237,19 +248,33 @@ export class OrderService {
     });
 
     // customer কে status update notification দাও
-    const statusMessages: Record<string, string> = {
-      PREPARING: "Your order is being prepared",
-      READY: "Your order is ready for delivery",
-      DELIVERED: "Your order has been delivered",
-      CANCELLED: "Your order has been cancelled",
+    const statusMessages: Record<string, { title: string; message: string }> = {
+      PREPARING: {
+        title: "Order Accepted! ",
+        message: "Your order is being prepared by the restaurant.",
+      },
+      READY: {
+        title: "Order Ready!",
+        message: "Your order is ready and will be delivered soon.",
+      },
+      DELIVERED: {
+        title: "Order Delivered!",
+        message: "Enjoy your meal! Don't forget to leave a review.",
+      },
+      CANCELLED: {
+        title: "Order Cancelled",
+        message: "Your order has been cancelled.",
+      },
     };
 
-    sendNotification(updated.customerId, {
-      type: "ORDER_STATUS_UPDATE",
-      title: "Order Update",
-      message: statusMessages[data.status] || "Your order status has been updated",
-      data: { orderId: id, status: data.status },
-    });
+    if (statusMessages[data.status]) {
+      await notificationService.create(
+        updated.customerId,
+        statusMessages[data.status].title,
+        statusMessages[data.status].message,
+        "ORDER",
+      );
+    }
 
     return updated;
   }
@@ -263,7 +288,10 @@ export class OrderService {
     }
 
     if (order.customerId !== customerId) {
-      throw new AppError("You do not have permission to cancel this order", 403);
+      throw new AppError(
+        "You do not have permission to cancel this order",
+        403,
+      );
     }
 
     if (order.status !== "PLACED") {

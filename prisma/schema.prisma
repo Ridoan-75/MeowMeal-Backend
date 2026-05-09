@@ -29,6 +29,7 @@ model User {
   reviews         Review[]
   cart            Cart?
   wishlists       Wishlist[]
+  notifications   Notification[]
 }
 
 model Session {
@@ -209,6 +210,19 @@ model Wishlist {
   meal     Meal @relation(fields: [mealId], references: [id], onDelete: Cascade)
 
   @@unique([customerId, mealId])
+}
+
+// ─── Notification Models ─────────────────────────────
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String   @default("INFO")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // ─── Enums ────────────────────────────────────────────

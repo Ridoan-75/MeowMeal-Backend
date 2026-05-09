@@ -13,7 +13,7 @@ import wishlistRoutes from "../modules/wishlist/wishlist.route";
 import multer from "multer";
 import { uploadFile } from "../modules/uploads/upload.controller";
 import { authenticate } from "../middlewares/auth.middleware";
-
+import notificationRoutes from "../modules/notifications/notification.route";
 
 const upload = multer({ storage: multer.memoryStorage() });
 const router = Router();
@@ -30,5 +30,6 @@ router.use("/admin", adminRoutes);
 router.use("/newsletter", newsletterRoutes);
 router.use("/wishlist", wishlistRoutes);
 router.post("/upload", authenticate, upload.single("file"), uploadFile);
+router.use("/notifications", notificationRoutes);
 
 export default router;
