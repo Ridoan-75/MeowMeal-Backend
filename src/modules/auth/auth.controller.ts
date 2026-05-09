@@ -21,8 +21,9 @@ export const getAllUsers = catchAsync(async (req: Request, res: Response) => {
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 10;
   const role = req.query.role as string | undefined;
+  const search = req.query.search as string | undefined;
 
-  const result = await authService.getAllUsers(page, limit, role);
+  const result = await authService.getAllUsers(page, limit, role, search);
 
   sendResponse(res, 200, true, "Users fetched successfully", result.users, {
     page: result.page,

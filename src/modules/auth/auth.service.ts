@@ -58,10 +58,22 @@ export class AuthService {
   }
 
   // get all users (admin)
-  async getAllUsers(page: number = 1, limit: number = 10, role?: string) {
+  async getAllUsers(
+    page: number = 1,
+    limit: number = 10,
+    role?: string,
+    search?: string,
+  ) {
     const skip = (page - 1) * limit;
 
-    const where = role ? { role: role as any } : {};
+    const where: any = role ? { role: role as any } : {};
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+      ];
+    }
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
