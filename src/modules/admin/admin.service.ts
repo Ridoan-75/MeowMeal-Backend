@@ -64,26 +64,26 @@ export class AdminService {
 
         // monthly orders for line chart
         prisma.$queryRaw<{ month: string; count: number }[]>`
-          SELECT
-            TO_CHAR("createdAt", 'Mon YYYY') as month,
-            COUNT(*) as count
-          FROM "Order"
-          WHERE "createdAt" >= NOW() - INTERVAL '6 months'
-          GROUP BY TO_CHAR("createdAt", 'Mon YYYY'), DATE_TRUNC('month', "createdAt")
-          ORDER BY DATE_TRUNC('month', "createdAt") ASC
-        `,
+  SELECT
+    TO_CHAR("createdAt", 'Mon YYYY') as month,
+    CAST(COUNT(*) AS INTEGER) as count
+  FROM "Order"
+  WHERE "createdAt" >= NOW() - INTERVAL '6 months'
+  GROUP BY TO_CHAR("createdAt", 'Mon YYYY'), DATE_TRUNC('month', "createdAt")
+  ORDER BY DATE_TRUNC('month', "createdAt") ASC
+`,
 
         // monthly revenue for bar chart
         prisma.$queryRaw<{ month: string; revenue: number }[]>`
-          SELECT
-            TO_CHAR("createdAt", 'Mon YYYY') as month,
-            SUM("totalAmount") as revenue
-          FROM "Order"
-          WHERE status = 'DELIVERED'
-            AND "createdAt" >= NOW() - INTERVAL '6 months'
-          GROUP BY TO_CHAR("createdAt", 'Mon YYYY'), DATE_TRUNC('month', "createdAt")
-          ORDER BY DATE_TRUNC('month', "createdAt") ASC
-        `,
+  SELECT
+    TO_CHAR("createdAt", 'Mon YYYY') as month,
+    CAST(SUM("totalAmount") AS FLOAT) as revenue
+  FROM "Order"
+  WHERE status = 'DELIVERED'
+    AND "createdAt" >= NOW() - INTERVAL '6 months'
+  GROUP BY TO_CHAR("createdAt", 'Mon YYYY'), DATE_TRUNC('month', "createdAt")
+  ORDER BY DATE_TRUNC('month', "createdAt") ASC
+`,
       ]);
 
       // top meals full data
