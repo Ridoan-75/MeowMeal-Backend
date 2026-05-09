@@ -26,16 +26,38 @@ export const getAllProviders = catchAsync(
         limit: result.limit,
         total: result.total,
         totalPages: Math.ceil(result.total / result.limit),
-      }
+      },
     );
-  }
+  },
+);
+
+export const toggleProviderBan = catchAsync(
+  async (req: Request, res: Response) => {
+    const result = await providerService.toggleProviderBan(req.params.id as string);
+    sendResponse(
+      res,
+      200,
+      true,
+      result.isActive ? "Provider unbanned" : "Provider banned",
+      result,
+    );
+  },
+);
+
+export const deleteProvider = catchAsync(
+  async (req: Request, res: Response) => {
+    await providerService.deleteProvider(req.params.id as string);
+    sendResponse(res, 200, true, "Provider deleted successfully");
+  },
 );
 
 export const getProviderById = catchAsync(
   async (req: Request, res: Response) => {
-    const provider = await providerService.getProviderById(req.params.id as string);
+    const provider = await providerService.getProviderById(
+      req.params.id as string,
+    );
     sendResponse(res, 200, true, "Provider fetched successfully", provider);
-  }
+  },
 );
 
 export const getMyProfile = catchAsync(async (req: Request, res: Response) => {
@@ -48,10 +70,16 @@ export const createProviderProfile = catchAsync(
     const validated = createProviderProfileSchema.parse(req.body);
     const provider = await providerService.createProviderProfile(
       req.user!.id,
-      validated
+      validated,
     );
-    sendResponse(res, 201, true, "Provider profile created successfully", provider);
-  }
+    sendResponse(
+      res,
+      201,
+      true,
+      "Provider profile created successfully",
+      provider,
+    );
+  },
 );
 
 export const updateProviderProfile = catchAsync(
@@ -59,29 +87,31 @@ export const updateProviderProfile = catchAsync(
     const validated = updateProviderProfileSchema.parse(req.body);
     const provider = await providerService.updateProviderProfile(
       req.user!.id,
-      validated
+      validated,
     );
     sendResponse(res, 200, true, "Profile updated successfully", provider);
-  }
+  },
 );
 
 export const toggleOpenStatus = catchAsync(
   async (req: Request, res: Response) => {
     const provider = await providerService.toggleOpenStatus(req.user!.id);
     sendResponse(res, 200, true, "Status updated successfully", provider);
-  }
+  },
 );
 
 export const verifyProvider = catchAsync(
   async (req: Request, res: Response) => {
-    const provider = await providerService.verifyProvider(req.params.id as string);
+    const provider = await providerService.verifyProvider(
+      req.params.id as string,
+    );
     sendResponse(res, 200, true, "Provider verified successfully", provider);
-  }
+  },
 );
 
 export const getDashboardStats = catchAsync(
   async (req: Request, res: Response) => {
     const stats = await providerService.getDashboardStats(req.user!.id);
     sendResponse(res, 200, true, "Dashboard stats fetched successfully", stats);
-  }
+  },
 );

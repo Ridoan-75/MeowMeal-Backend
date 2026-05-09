@@ -18,7 +18,7 @@ import { authenticate } from "../middlewares/auth.middleware";
 const upload = multer({ storage: multer.memoryStorage() });
 const router = Router();
 
-router.use("/auth", authRoutes);
+router.use("/users", authRoutes);
 router.use("/categories", categoryRoutes);
 router.use("/meals", mealRoutes);
 router.use("/orders", orderRoutes);

@@ -8,6 +8,8 @@ import { apiLimiter } from "./middlewares/rateLimiter";
 import { logger } from "./utils/logger";
 import morgan from "morgan";
 import routes from "./routes";
+import "./config/cloudinary";
+
 
 const app: Application = express();
 

@@ -191,6 +191,60 @@ export class ProviderService {
     return updated;
   }
 
+  //toggle provider ban status (admin)
+  async toggleProviderBan(id: string) {
+    const provider = await prisma.providerProfile.findUnique({
+      where: { id },
+      include: { user: true },
+    });
+    if (!provider) throw new AppError("Provider not found", 404);
+
+    const updated = await prisma.user.update({
+      where: { id: provider.userId },
+      data: { isActive: !provider.user.isActive },
+    });
+
+    return { isActive: updated.isActive };
+  }
+
+  async deleteProvider(id: string) {
+    const provider = await prisma.providerProfile.findUnique({
+      where: { id },
+      include: { user: true },
+    });
+    if (!provider) throw new AppError("Provider not found", 404);
+
+    // Related data আগে delete করো
+    await prisma.$transaction([
+      prisma.wishlist.deleteMany({
+        where: { meal: { providerId: id } },
+      }),
+      prisma.cartItem.deleteMany({
+        where: { meal: { providerId: id } },
+      }),
+      prisma.review.deleteMany({
+        where: { meal: { providerId: id } },
+      }),
+      prisma.orderItem.deleteMany({
+        where: { meal: { providerId: id } },
+      }),
+      prisma.order.deleteMany({
+        where: { providerId: id },
+      }),
+      prisma.meal.deleteMany({
+        where: { providerId: id },
+      }),
+      prisma.providerProfile.delete({
+        where: { id },
+      }),
+      prisma.user.delete({
+        where: { id: provider.userId },
+      }),
+    ]);
+
+    return { message: "Provider deleted" };
+  }
+
   // get provider dashboard stats
   async getDashboardStats(userId: string) {
     const provider = await prisma.providerProfile.findUnique({
@@ -226,7 +280,9 @@ export class ProviderService {
       }),
     ]);
 
-    const monthlyRevenue = await prisma.$queryRaw<{ month: string; revenue: number }[]>`
+    const monthlyRevenue = await prisma.$queryRaw<
+      { month: string; revenue: number }[]
+    >`
       SELECT 
         TO_CHAR("createdAt", 'Mon') as month,
         SUM("totalAmount") as revenue
