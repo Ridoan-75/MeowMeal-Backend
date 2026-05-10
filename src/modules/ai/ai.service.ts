@@ -25,10 +25,7 @@ export class AIService {
     });
 
     if (orderHistory.length === 0) {
-      throw new AppError(
-        "No order history found to generate recommendations",
-        400
-      );
+      throw new AppError("No order history found to generate recommendations", 400);
     }
 
     const availableMeals = await prisma.meal.findMany({
@@ -87,9 +84,7 @@ Format:
       const recommendations = JSON.parse(cleaned);
 
       const recommendedMeals = await prisma.meal.findMany({
-        where: {
-          id: { in: recommendations.map((r: any) => r.id) },
-        },
+        where: { id: { in: recommendations.map((r: any) => r.id) } },
         include: {
           category: { select: { id: true, name: true } },
           provider: { select: { id: true, shopName: true, logo: true } },
@@ -98,26 +93,95 @@ Format:
 
       return recommendedMeals.map((meal) => ({
         ...meal,
-        reason:
-          recommendations.find((r: any) => r.id === meal.id)?.reason || "",
+        reason: recommendations.find((r: any) => r.id === meal.id)?.reason || "",
       }));
     } catch {
       throw new AppError("Failed to generate recommendations", 500);
     }
   }
 
-  // 2. AI Food Chatbot
+  // 2. AI Food Chatbot — DB থেকে real data নিয়ে answer করে
   async chat(message: string, conversationHistory: any[]) {
-    const systemPrompt = `You are a helpful food assistant for MeowMeal, a food delivery app in Bangladesh.
-You help customers with finding meals, food recommendations, dietary advice, and order questions.
-Be friendly, concise, and helpful. Keep responses under 150 words.
-If asked about something unrelated to food, politely redirect.`;
+    // Real data from DB
+    const [meals, categories, providers] = await Promise.all([
+      prisma.meal.findMany({
+        where: { isAvailable: true },
+        select: {
+          title: true,
+          price: true,
+          tags: true,
+          prepTime: true,
+          description: true,
+          category: { select: { name: true } },
+          provider: { select: { shopName: true, city: true, isOpen: true } },
+        },
+        take: 30,
+      }),
+      prisma.category.findMany({
+        where: { isActive: true },
+        select: { name: true },
+      }),
+      prisma.providerProfile.findMany({
+        select: { shopName: true, city: true, isOpen: true, description: true },
+        take: 20,
+      }),
+    ]);
+
+    const systemPrompt = `You are MeowMeal AI, a helpful food assistant for MeowMeal food delivery app in Bangladesh.
+
+REAL DATA FROM OUR PLATFORM:
+
+Available Meals (${meals.length} total):
+${JSON.stringify(
+  meals.map((m) => ({
+    name: m.title,
+    price: `৳${m.price}`,
+    category: m.category.name,
+    prepTime: `${m.prepTime} min`,
+    tags: m.tags,
+    description: m.description,
+    restaurant: m.provider.shopName,
+    city: m.provider.city,
+    restaurantOpen: m.provider.isOpen ? "Open" : "Closed",
+  })),
+  null,
+  2
+)}
+
+Available Categories: ${categories.map((c) => c.name).join(", ")}
+
+All Restaurants:
+${JSON.stringify(
+  providers.map((p) => ({
+    name: p.shopName,
+    city: p.city,
+    status: p.isOpen ? "Open" : "Closed",
+    description: p.description,
+  })),
+  null,
+  2
+)}
+
+INSTRUCTIONS:
+- Always answer based on the REAL DATA above only
+- If asked about meals, suggest from the actual available meals listed above
+- If asked about restaurants, mention actual restaurants from the list
+- If asked how many meals/restaurants, count from the real data
+- Be friendly and concise (under 150 words)
+- Respond in the same language the user writes in (Bengali or English)
+- If something is not in our platform, say so honestly
+- Do NOT make up meals or restaurants that are not listed above
+- Help with food recommendations, dietary questions, order guidance
+
+ORDER HELP:
+- To cancel an order: Go to Dashboard → My Orders → click the order → Cancel Order button (only PLACED orders can be cancelled)
+- To track an order: Go to Dashboard → My Orders → check the status
+- Payment method: Cash on Delivery only
+- Delivery: Restaurants deliver to your address
+- For other issues: Contact support at support@meowmeal.com`;
 
     const history = conversationHistory
-      .map(
-        (msg: any) =>
-          `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}`
-      )
+      .map((msg: any) => `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}`)
       .join("\n");
 
     const prompt = `${systemPrompt}
@@ -131,7 +195,6 @@ Assistant:`;
     try {
       const result = await geminiModel.generateContent(prompt);
       const response = result.response.text().trim();
-
       return { message: response };
     } catch {
       throw new AppError("Failed to generate chat response", 500);
@@ -168,7 +231,6 @@ Format:
       const text = result.response.text().trim();
       const cleaned = text.replace(/```json|```/g, "").trim();
       const generated = JSON.parse(cleaned);
-
       return generated;
     } catch {
       throw new AppError("Failed to generate description", 500);
@@ -212,7 +274,6 @@ Format:
       const cleaned = text.replace(/```json|```/g, "").trim();
       const analysis = JSON.parse(cleaned);
 
-      // update each review sentiment in db
       for (const item of analysis.reviewSentiments) {
         await prisma.review.update({
           where: { id: item.id },

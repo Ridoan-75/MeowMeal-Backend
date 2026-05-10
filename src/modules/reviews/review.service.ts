@@ -11,7 +11,6 @@ export class ReviewService {
         mealId: data.mealId,
         order: {
           customerId,
-          status: "DELIVERED",
         },
       },
     });
