@@ -10,26 +10,30 @@ import morgan from "morgan";
 import routes from "./routes";
 import "./config/cloudinary";
 
-
 const app: Application = express();
 
+// ─── CORS — সবার আগে ─────────────────────────────────
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:5000"],
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:5000",
+      "https://meowmeal-frontend.vercel.app",
+      process.env.CLIENT_URL as string,
+    ].filter(Boolean),
     credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "Origin"],
   }),
 );
 
-// ─── Security Middlewares ─────────────────────────────
-app.use(helmet());
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
-    credentials: true,
-  }),
-);
+// ─── Preflight ────────────────────────────────────────
+app.options("*", cors());
+
+// ─── Security ────────────────────────────────────────
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+}));
 
 // ─── Better Auth Handler ──────────────────────────────
 app.all("/api/auth/*splat", toNodeHandler(auth));
@@ -42,7 +46,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(
   morgan("combined", {
     stream: {
-      write: (message) => logger.info(message.trim()),
+      write: (message: string) => logger.info(message.trim()),
     },
   }),
 );
