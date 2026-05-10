@@ -4,6 +4,7 @@ import {
   chat,
   generateMenuDescription,
   analyzeReviews,
+  analyzePlatform,
 } from "./ai.controller";
 import { authenticate, authorize } from "../../middlewares/auth.middleware";
 
@@ -14,7 +15,7 @@ router.get(
   "/recommendations",
   authenticate,
   authorize("CUSTOMER"),
-  getMealRecommendations
+  getMealRecommendations,
 );
 
 // all authenticated users
@@ -25,7 +26,7 @@ router.post(
   "/generate-description",
   authenticate,
   authorize("PROVIDER"),
-  generateMenuDescription
+  generateMenuDescription,
 );
 
 // provider and admin
@@ -33,7 +34,14 @@ router.post(
   "/analyze-reviews",
   authenticate,
   authorize("PROVIDER", "ADMIN"),
-  analyzeReviews
+  analyzeReviews,
+);
+
+router.get(
+  "/analyze-platform",
+  authenticate,
+  authorize("ADMIN"),
+  analyzePlatform,
 );
 
 export default router;

@@ -286,4 +286,113 @@ Format:
       throw new AppError("Failed to analyze sentiment", 500);
     }
   }
+
+  // 5. AI Platform Analyzer (Admin only)
+  async analyzePlatform() {
+    const [
+      totalOrders,
+      totalRevenue,
+      ordersByStatus,
+      topMeals,
+      recentReviews,
+      totalUsers,
+      totalProviders,
+      monthlyOrders,
+    ] = await Promise.all([
+      prisma.order.count(),
+      prisma.order.aggregate({
+        where: { status: "DELIVERED" },
+        _sum: { totalAmount: true },
+      }),
+      prisma.order.groupBy({
+        by: ["status"],
+        _count: { status: true },
+      }),
+      prisma.orderItem.groupBy({
+        by: ["mealId"],
+        _count: { mealId: true },
+        orderBy: { _count: { mealId: "desc" } },
+        take: 5,
+      }),
+      prisma.review.findMany({
+        take: 20,
+        orderBy: { createdAt: "desc" },
+        select: { rating: true, comment: true, sentiment: true },
+      }),
+      prisma.user.count({ where: { role: "CUSTOMER" } }),
+      prisma.providerProfile.count(),
+      prisma.order.findMany({
+        where: {
+          createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+        },
+        select: { totalAmount: true, status: true, createdAt: true },
+      }),
+    ]);
+
+    const topMealIds = topMeals.map((m) => m.mealId);
+    const topMealDetails = await prisma.meal.findMany({
+      where: { id: { in: topMealIds } },
+      select: { id: true, title: true, price: true },
+    });
+
+    const prompt = `You are an AI business analyst for MeowMeal, a food delivery platform in Bangladesh.
+
+PLATFORM DATA:
+
+Total Customers: ${totalUsers}
+Total Restaurants: ${totalProviders}
+Total Orders: ${totalOrders}
+Total Revenue (Delivered): ৳${totalRevenue._sum.totalAmount || 0}
+
+Order Status Breakdown:
+${JSON.stringify(ordersByStatus.map(o => ({ status: o.status, count: o._count.status })), null, 2)}
+
+Top 5 Most Ordered Meals:
+${JSON.stringify(topMealDetails.map(m => ({
+  name: m.title,
+  price: `৳${m.price}`,
+  orderCount: topMeals.find(t => t.mealId === m.id)?._count.mealId || 0,
+})), null, 2)}
+
+Last 30 Days Orders: ${monthlyOrders.length}
+Last 30 Days Revenue: ৳${monthlyOrders.filter(o => o.status === "DELIVERED").reduce((sum, o) => sum + o.totalAmount, 0)}
+
+Recent Reviews Sample (${recentReviews.length} reviews):
+Average Rating: ${recentReviews.length > 0 ? (recentReviews.reduce((sum, r) => sum + r.rating, 0) / recentReviews.length).toFixed(1) : "N/A"}
+Sentiment: ${recentReviews.filter(r => r.sentiment === "positive").length} positive, ${recentReviews.filter(r => r.sentiment === "negative").length} negative, ${recentReviews.filter(r => r.sentiment === "neutral").length} neutral
+
+Analyze this data and provide actionable business insights.
+Respond ONLY with a valid JSON object. No markdown, no extra text.
+Format:
+{
+  "overallHealth": "excellent/good/fair/poor",
+  "healthScore": 85,
+  "keyMetrics": {
+    "conversionRate": "description",
+    "avgOrderValue": "৳amount",
+    "customerSatisfaction": "percentage or description"
+  },
+  "strengths": ["strength1", "strength2", "strength3"],
+  "weaknesses": ["weakness1", "weakness2"],
+  "opportunities": ["opportunity1", "opportunity2"],
+  "recommendations": [
+    {
+      "priority": "high/medium/low",
+      "action": "what to do",
+      "impact": "expected impact"
+    }
+  ],
+  "summary": "2-3 sentence executive summary"
+}`;
+
+    try {
+      const result = await geminiModel.generateContent(prompt);
+      const text = result.response.text().trim();
+      const cleaned = text.replace(/```json|```/g, "").trim();
+      const analysis = JSON.parse(cleaned);
+      return analysis;
+    } catch {
+      throw new AppError("Failed to analyze platform data", 500);
+    }
+  }
 }

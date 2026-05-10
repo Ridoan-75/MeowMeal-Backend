@@ -11,6 +11,11 @@ import { prisma } from "../../config/database";
 
 const aiService = new AIService();
 
+export const analyzePlatform = catchAsync(async (req: Request, res: Response) => {
+  const result = await aiService.analyzePlatform();
+  sendResponse(res, 200, true, "Platform analyzed successfully", result);
+});
+
 // 1. Meal Recommendations
 export const getMealRecommendations = catchAsync(
   async (req: Request, res: Response) => {
