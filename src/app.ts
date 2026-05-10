@@ -12,6 +12,9 @@ import "./config/cloudinary";
 
 const app: Application = express();
 
+// CORS এর আগে add করো
+app.set("trust proxy", 1);
+
 // ─── CORS — সবার আগে ─────────────────────────────────
 app.use(
   cors({
@@ -28,9 +31,11 @@ app.use(
 );
 
 // ─── Security ────────────────────────────────────────
-app.use(helmet({
-  crossOriginResourcePolicy: false,
-}));
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+  }),
+);
 
 // ─── Better Auth Handler ──────────────────────────────
 app.all("/api/auth/*splat", toNodeHandler(auth));
