@@ -27,9 +27,6 @@ app.use(
   }),
 );
 
-// ─── Preflight ────────────────────────────────────────
-app.options("*", cors());
-
 // ─── Security ────────────────────────────────────────
 app.use(helmet({
   crossOriginResourcePolicy: false,
